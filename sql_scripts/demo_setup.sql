@@ -6,16 +6,17 @@ USE DATABASE AI_EXTRACT_DEMOS;
 CREATE SCHEMA IF NOT EXISTS EXTRACT_ANYTHING;
 USE SCHEMA AI_EXTRACT_DEMOS.EXTRACT_ANYTHING;
 
---use role accountadmin;
+use role accountadmin;
   
 CREATE OR REPLACE API INTEGRATION git_sfc_gh_nrinard_api_integration
     API_PROVIDER = git_https_api
     API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-nrinard')
     ENABLED = TRUE;
 
+use role sysadmin;
 -- Create Git repository integration for the public demo repository
 CREATE OR REPLACE GIT REPOSITORY AI_EXTRACT_PUBLIC
-    API_INTEGRATION = gitlab_api_integration
+    API_INTEGRATION = git_sfc_gh_nrinard_api_integration
     ORIGIN = 'https://github.com/sfc-gh-nrinard/AI_EXTRACT-public.git';
 
 ALTER GIT REPOSITORY AI_EXTRACT_PUBLIC FETCH;
@@ -31,7 +32,7 @@ COMMENT = 'Internal stage for data files'
   DIRECTORY = (ENABLE = TRUE)
   ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE');
 
--- CREATE OR REPLACE STREAM DOCS_ROUTER_STREAM ON STAGE DOCS_ROUTER_STAGE;
+ CREATE OR REPLACE STREAM DOCS_ROUTER_STREAM ON STAGE DOCS_ROUTER_STAGE;
 
 -- Single RAW table capturing classification and extracted JSON
 CREATE OR REPLACE TABLE RAW (
@@ -70,18 +71,19 @@ LANGUAGE SQL
 AS $$
 DECLARE
   v_count NUMBER := 0;
-BEGIN
-  FOR rec IN (
+  v_file_name STRING;
+  c CURSOR FOR
     SELECT RELATIVE_PATH AS file_name
     FROM DOCS_ROUTER_STREAM
-    WHERE METADATA$ACTION = 'INSERT'
-  )
-  DO
-    CALL PROCESS_ONE_FILE(rec.file_name);
+    WHERE METADATA$ACTION = 'INSERT';
+BEGIN
+  FOR rec IN c DO
+    v_file_name := rec.file_name;
+    CALL PROCESS_ONE_FILE(:v_file_name);
     v_count := v_count + 1;
   END FOR;
 
-  RETURN 'OK';
+  RETURN CONCAT('OK (processed ', v_count, ' file(s))');
 END;
 $$;
 
