@@ -1,0 +1,56 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+
+# Streamlit
+.streamlit/secrets.toml
+.streamlit/**/secrets.toml
+.streamlit/**/.credentials
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS / Misc
+Thumbs.db
+
+# Node/npm (if used later)
+node_modules/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Local data/secrets
+.env
+.env.*
+*.env
+secrets.*
+credentials.*
+*.key
+*.pem
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Snowflake CLI and temp
+.snowflake/
+profiles.yml
