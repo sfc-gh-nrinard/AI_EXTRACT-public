@@ -22,7 +22,7 @@ def get_file_type(filename: Optional[str]) -> str:
     ext = filename.lower().split(".")[-1] if "." in filename else ""
     if ext == "pdf":
         return "pdf"
-    if ext in ["png", "jpg", "jpeg", "gif", "bmp", "webp"]:
+    if ext in ["png", "jpg", "jpeg"]:
         return "image"
     return "unknown"
 
@@ -213,6 +213,10 @@ if "_cache_buster" not in st.session_state:
 def _bump_cache() -> None:
     st.session_state["_cache_buster"] = int(st.session_state.get("_cache_buster", 0)) + 1
 
+# Uploader widget versioning to force clear after success
+if "uploader_nonce" not in st.session_state:
+    st.session_state["uploader_nonce"] = 0
+
 
 @st.cache_data(show_spinner=False, ttl=10)
 def list_doc_types(_buster: int):
@@ -391,10 +395,6 @@ with tab_prompts:
                     _bump_cache()
                     if inserted > 0:
                         st.success(f"Prompts saved ({inserted}).")
-                        # Show a live preview of saved prompts
-                        latest = load_prompts(dtype_val, st.session_state.get("_cache_buster", 0))
-                        if latest is not None:
-                            st.dataframe(latest, use_container_width=True)
                     else:
                         st.warning("No prompts saved. Ensure 'field_name' and 'retrieval_prompt' are filled.")
                 except Exception as e:
@@ -404,7 +404,13 @@ with tab_prompts:
 
 with tab_upload:
     st.subheader("⬆️ Upload Documents")
-    files = st.file_uploader("Upload PDFs or images", type=["pdf","png","jpg","jpeg","gif","bmp","webp"], accept_multiple_files=True)
+    uploader_key = f"upload_files::" + str(st.session_state.get("uploader_nonce", 0))
+    files = st.file_uploader(
+        "Upload PDFs or images",
+        type=["pdf","png","jpg","jpeg"],
+        accept_multiple_files=True,
+        key=uploader_key,
+    )
     if files:
         names = [f.name for f in files]
         st.markdown(f"<div class='card'><div class='section-title'>Queued files</div><div class='pill'>{len(names)} selected</div><div style='margin-top:8px; font-size:12px; color:var(--muted);'>" + ", ".join(names) + "</div></div>", unsafe_allow_html=True)
@@ -432,6 +438,10 @@ with tab_upload:
             errors.append(f"Processing error: {e}")
         if uploaded and not errors:
             st.success(f"Uploaded and processed {uploaded} file(s).")
+            # Clear uploader queue by bumping nonce to force a new widget key
+            st.session_state["uploader_nonce"] = int(st.session_state.get("uploader_nonce", 0)) + 1
+            _bump_cache()
+            st.rerun()
         elif uploaded:
             st.warning(f"Uploaded {uploaded} file(s) with some errors:\n" + "\n".join(errors))
         else:
